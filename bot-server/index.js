@@ -27,26 +27,51 @@ const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));
 
 // SmailPro API Helpers
+const commonHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Referer': 'https://smailpro.com/',
+    'Accept': '*/*',
+    'X-Requested-With': 'XMLHttpRequest'
+};
+
 async function getPayload(url, params = {}) {
     try {
         const query = new URLSearchParams({ url, ...params }).toString();
-        const response = await axios.get(`https://smailpro.com/app/payload?${query}`);
+        const response = await axios.get(`https://smailpro.com/app/payload?${query}`, {
+            headers: commonHeaders
+        });
         return response.data;
     } catch (error) {
-        console.error('Payload error:', error.message);
+        console.error('Payload error:', error.response?.data || error.message);
         throw error;
     }
 }
 
-async function createSmailProEmail(email = null) {
-    const payload = await getPayload(`${smailproBaseUrl}/create`, email ? { email } : {});
-    const response = await axios.get(`${smailproBaseUrl}/create?payload=${payload}`);
+async function createSmailProEmail() {
+    // List of edu.pl domains found on smailpro.com
+    const domains = ['sydney.edu.pl', 'melbourne.edu.pl', 'tokyo.edu.pl'];
+    const domain = domains[Math.floor(Math.random() * domains.length)];
+    const username = Math.random().toString(36).substring(2, 12);
+    const email = `${username}@${domain}`;
+
+    const payload = await getPayload(`${smailproBaseUrl}/create`, { email });
+    const response = await axios.get(`${smailproBaseUrl}/create?payload=${payload}`, {
+        headers: {
+            ...commonHeaders,
+            'Origin': 'https://smailpro.com'
+        }
+    });
     return response.data;
 }
 
 async function getSmailProInbox(email) {
     const payload = await getPayload(`${smailproBaseUrl}/inbox`, { email });
-    const response = await axios.get(`${smailproBaseUrl}/inbox?payload=${payload}`);
+    const response = await axios.get(`${smailproBaseUrl}/inbox?payload=${payload}`, {
+        headers: {
+            ...commonHeaders,
+            'Origin': 'https://smailpro.com'
+        }
+    });
     return response.data;
 }
 
