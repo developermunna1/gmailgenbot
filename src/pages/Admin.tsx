@@ -13,86 +13,14 @@ import { WithdrawalsPanel } from "@/components/admin/WithdrawalsPanel";
 import { AppSettingsPanel } from "@/components/admin/AppSettingsPanel";
 import { SupportChannelsPanel } from "@/components/admin/SupportChannelsPanel";
 import { GmailRequestsPanel } from "@/components/admin/GmailRequestsPanel";
-import { User } from "@supabase/supabase-js";
 
 const Admin = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setTimeout(() => {
-            checkAdminStatus(session.user.id);
-          }, 0);
-        } else {
-          setIsAdmin(false);
-          setLoading(false);
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        checkAdminStatus(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const checkAdminStatus = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("admin_users")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (error) {
-      console.error("Error checking admin status:", error);
-    }
-
-    setIsAdmin(!!data);
-    setLoading(false);
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success("সফলভাবে লগআউট হয়েছে");
+  const handleLogout = () => {
+    toast.success("লগআউট হয়েছে");
     navigate("/");
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthForm />;
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center p-8">
-          <h1 className="text-2xl font-bold text-foreground mb-4">অ্যাক্সেস নিষিদ্ধ</h1>
-          <p className="text-muted-foreground mb-4">আপনি অ্যাডমিন হিসেবে নিবন্ধিত নন।</p>
-          <Button onClick={handleLogout}>লগআউট</Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,15 +51,15 @@ const Admin = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="requests" className="w-full">
+        <Tabs defaultValue="gmails" className="w-full">
           <TabsList className="flex flex-wrap gap-2 mb-8 h-auto bg-card p-2 rounded-xl border border-border shadow-sm">
-            <TabsTrigger value="requests" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 py-2">
-              <Phone className="w-4 h-4" />
-              <span className="hidden sm:inline">নম্বর</span>
-            </TabsTrigger>
             <TabsTrigger value="gmails" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 py-2">
               <Mail className="w-4 h-4" />
               <span className="hidden sm:inline">জিমেইল</span>
+            </TabsTrigger>
+            <TabsTrigger value="requests" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 py-2">
+              <Phone className="w-4 h-4" />
+              <span className="hidden sm:inline">নম্বর</span>
             </TabsTrigger>
             <TabsTrigger value="withdrawals" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 py-2">
               <Wallet className="w-4 h-4" />
@@ -159,12 +87,12 @@ const Admin = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="requests">
-            <NumberRequestsPanel />
-          </TabsContent>
-
           <TabsContent value="gmails">
             <GmailRequestsPanel />
+          </TabsContent>
+
+          <TabsContent value="requests">
+            <NumberRequestsPanel />
           </TabsContent>
 
           <TabsContent value="withdrawals">
@@ -192,80 +120,6 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
       </main>
-    </div>
-  );
-};
-
-const AuthForm = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
-      toast.success("সফলভাবে লগইন হয়েছে");
-    } catch (error: any) {
-      toast.error("ভুল ইমেইল বা পাসওয়ার্ড!");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-card rounded-2xl shadow-2xl p-8 border border-border">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <Settings className="w-8 h-8 text-primary-foreground" />
-            </div>
-            <h1 className="text-2xl font-bold text-card-foreground">
-              অ্যাডমিন লগইন
-            </h1>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-card-foreground mb-2">
-                ইমেইল
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-card-foreground mb-2">
-                পাসওয়ার্ড
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
-                required
-                minLength={6}
-              />
-            </div>
-
-            <Button type="submit" className="w-full h-12 rounded-xl bg-gradient-to-r from-primary to-primary/80" disabled={loading}>
-              {loading ? "অপেক্ষা করুন..." : "লগইন"}
-            </Button>
-          </form>
-        </div>
-      </div>
     </div>
   );
 };
